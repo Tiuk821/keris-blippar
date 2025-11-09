@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penampil 3D Interaktif (Three.js)</title>
+    
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; /* Mencegah scrollbar */
+            font-family: sans-serif; 
+        }
+        #container3D { 
+            width: 100vw; 
+            height: 100vh; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+        }
+        /* Panel Kontrol */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 15px 20px;
+            z-index: 10;
+            color: white;
+            width: 80%;
+            max-width: 400px;
+        }
+        .slider-group { 
+            margin-bottom: 10px; 
+        }
+        .slider-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+        }
+        input[type="range"] { 
+            width: 100%; 
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="container3D"></div>
+
+    <div id="controls">
+        <div class="slider-group">
+            <label for="scale-slider">Ukuran (Scale)</label>
+            <input type="range" id="scale-slider" min="0.1" max="3" value="0.5" step="0.05">
+        </div>
+        <div class="slider-group">
+            <label for="rotY-slider">Rotasi (Putar)</label>
+            <input type="range" id="rotY-slider" min="0" max="360" value="0" step="1">
+        </div>
+    </div>
+
+    <script type="module">
+        // Import library yang kita butuhkan
+        import * as THREE from "https://cdn.skypack.dev/three@0.129.0/build/three.module.js";
+        import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js";
+        import { GLTFLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js";
+
+        // Variabel global untuk menyimpan model 3D agar bisa diakses
+        let object; 
+
+        // === 1. SETUP DASAR ===
+        const scene = new THREE.Scene();
+        
+        // **GOAL 2: Background berwarna putih**
+        scene.background = new THREE.Color(0xffffff); // 0xffffff adalah kode hex untuk putih
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer(); // Dihapus {alpha: true}
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById("container3D").appendChild(renderer.domElement);
+
+        // === 2. MEMUAT MODEL 3D ===
+        
+        // GANTI 'simple_keris.glb' dengan path ke file model .glb kamu
+        const modelPath = 'simple_keris.glb'; 
+        
+        const loader = new GLTFLoader();
+        loader.load(
+          modelPath,
+          function (gltf) {
+            object = gltf.scene; // Simpan model ke variabel global
+            
+            // **GOAL 1: Objek tidak terlalu besar (atur skala default)**
+            object.scale.set(0.5, 0.5, 0.5); // Atur skala default jadi 50%
+            object.rotation.z = THREE.MathUtils.degToRad(-90);
+            scene.add(object);
+            console.log("✅ Model 3D berhasil dimuat!");
+          },
+          (xhr) => console.log((xhr.loaded / xhr.total * 100) + '% loaded'),
+          (error) => console.error("❌ Gagal memuat model 3D:", error)
+        );
+
+        // === 3. POSISI KAMERA & CAHAYA ===
+        camera.position.z = 2; // Atur jarak kamera
+        
+        // Tambahkan cahaya agar model tidak gelap
+        const topLight = new THREE.DirectionalLight(0xffffff, 1);
+        topLight.position.set(500, 500, 500);
+        scene.add(topLight);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Cahaya ambient lebih terang
+        scene.add(ambientLight);
+
+        // === 4. KONTROL KAMERA (OrbitControls) ===
+        // Ini tetap ada agar kamu bisa memutar kamera dengan mouse/sentuhan
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; // Gerakan lebih halus
+
+        // === 5. KONTROL UI (GOAL 3: Navigasi) ===
+        // Ambil elemen slider dari HTML
+        const scaleSlider = document.getElementById('scale-slider');
+        const rotYSlider = document.getElementById('rotY-slider');
+
+        // Tambahkan event listener untuk slider UKURAN
+        scaleSlider.addEventListener('input', (e) => {
+            if (object) { // Hanya jalankan jika model 'object' sudah dimuat
+                const scale = parseFloat(e.target.value);
+                object.scale.set(scale, scale, scale);
+            }
+        });
+
+        // Tambahkan event listener untuk slider ROTASI
+        rotYSlider.addEventListener('input', (e) => {
+            if (object) { // Hanya jalankan jika model 'object' sudah dimuat
+                const rotationY = parseFloat(e.target.value);
+                // Three.js menggunakan radian, jadi kita konversi dari derajat
+                object.rotation.y = THREE.MathUtils.degToRad(rotationY); 
+            }
+        });
+
+        // === 6. RENDER LOOP ===
+        function animate() {
+          requestAnimationFrame(animate);
+          controls.update(); // Update kontrol kamera
+          renderer.render(scene, camera);
+        }
+
+        // Listener agar scene menyesuaikan ukuran saat jendela browser diubah
+        window.addEventListener("resize", () => {
+          camera.aspect = window.innerWidth / window.innerHeight;
+          camera.updateProjectionMatrix();
+          renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Mulai render
+        animate();
+    </script>
+</body>
+</html>
